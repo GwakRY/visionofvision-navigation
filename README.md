@@ -160,7 +160,6 @@ visionofvision-navigation/
 │  └─ images/
 │     ├─ navigation-search.png
 │     ├─ navigation-guidance.png
-
 │     ├─ navigation-route-map.png
 │     └─ favorites-erd.png
 ├── .gitignore
