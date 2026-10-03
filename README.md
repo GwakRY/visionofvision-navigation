@@ -75,7 +75,7 @@ TMAP 경로 탐색
 
 \---
 
-# Tech Stack
+## Tech Stack
 
 ## Frontend
 
@@ -156,7 +156,7 @@ visionofvision-navigation/
 ├── .github/
 │   └── workflows/
 │       └── deploy.yml
-│─ docs/
+├── docs/
 │  └─ images/
 │     ├─ navigation-search.png
 │     ├─ navigation-guidance.png
@@ -196,7 +196,7 @@ NavigationScreen
 
 \---
 
-## Key Implementation
+### Key Implementation
 
 ## 현재 위치 및 목적지 처리
 
@@ -368,7 +368,7 @@ Device Heading
 
 # YOLO Result Integration
 
-길찾기 화면에서 Expo Camera로 카메라 프레임을 획득하고 Socket.IO 기반 WebSocket을 통해 AI 서버에 전달합니다.
+길찾기 화면에서 Expo Camera로 카메라 프레임을 획득하고Socket.IO 기반 실시간 통신을 통해 AI 서버에 전달합니다.
 
 서버에서 전달받은 Detection 결과를 이용하여:
 
