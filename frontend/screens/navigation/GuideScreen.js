@@ -3,12 +3,21 @@ import { useIsFocused } from '@react-navigation/native';
 import { CameraView } from 'expo-camera';
 import * as SecureStore from 'expo-secure-store';
 import React, { useEffect } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Alert,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import { GuideOverlay } from '../../components/navigation/GuideOverlay';
 import { useCamera } from '../../hooks/navigation/useCamera';
 import { useNavigationGuide } from '../../hooks/navigation/useNavigationGuide';
 import { speakWithOptions, stopSpeech } from '../../utils/speechHelper';
 import YoloDanger from './YoloDanger';
+
+const API_SERVER_URL = process.env.EXPO_PUBLIC_AI_SERVER_URL;
 
 const GuideScreen = ({ route, navigation }) => {
   const { currentLocation, destination, destinationCoords } = route.params || {};
@@ -79,7 +88,7 @@ const GuideScreen = ({ route, navigation }) => {
   const checkIfAlreadyInFavorites = async (address) => {
     try {
       const deviceId = await SecureStore.getItemAsync('deviceId');
-      const url = `EXPO_PUBLIC_AI_SERVER_URL/setting/favorites?device_id=${encodeURIComponent(deviceId)}`;
+      const url = `${API_SERVER_URL}/setting/favorites?device_id=${encodeURIComponent(deviceId)}`;
       const response = await fetch(url, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
