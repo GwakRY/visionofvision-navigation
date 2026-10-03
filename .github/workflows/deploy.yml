@@ -1,0 +1,33 @@
+name: "🚀 Deploy to EC2"
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Create SSH Key
+        run: |
+          echo "${{ secrets.EC2_KEY }}" > key.pem
+          chmod 400 key.pem
+
+      - name: Deploy via SSH
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -i key.pem "${{ secrets.EC2_USER }}@${{ secrets.EC2_HOST }}" \
+          "set -e; \
+           cd ~; \
+           command -v git >/dev/null 2>&1 || { sudo apt-get update && sudo apt-get install -y git; }; \
+           if [ ! -d server/.git ]; then \
+             git clone https://x-access-token:${GH_PAT}@github.com/VisionOfVision/VisionOfVision.git server; \
+           fi; \
+           cd server; \
+           git fetch https://x-access-token:${GH_PAT}@github.com/VisionOfVision/VisionOfVision.git main; \
+           git reset --hard FETCH_HEAD"
+
+      - name: Cleanup SSH Key
+        if: always()
+        run: rm -f key.pem
