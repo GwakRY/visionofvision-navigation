@@ -13,7 +13,7 @@ import WarningOverlay from '../../components/yolo/WarningOverlay';
 
 const getReadableName = (cls) => classMap?.[cls] ?? cls
 const { width: previewWidth, height: previewHeight } = Dimensions.get('window');
-const SERVER_URL = 'http://3.37.7.103:5004';
+const SERVER_URL = process.env.EXPO_PUBLIC_YOLO_SERVER_URL;
 
 const ASSIST_SET = new Set([
   'bluesignal', 'crosswalk', 'redsignal', 'braille block',
