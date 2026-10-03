@@ -14,7 +14,7 @@
 
 ## 담당 기능
 
-### 1\. 길찾기 프론트엔드
+### 1. 길찾기 프론트엔드
 
 React Native(Expo) 환경에서 현재 위치 확인부터 목적지 검색, 보행자 경로 안내, 경로 이탈 감지 및 자동 재탐색까지 구현했습니다.
 
@@ -37,9 +37,9 @@ React Native(Expo) 환경에서 현재 위치 확인부터 목적지 검색, 보
 * React Navigation Life Cycle 기반 실시간 자원 관리
 * YOLO 위험 감지 결과를 TTS·진동·Overlay와 연계
 
-\---
+---
 
-## 2\. 길찾기 즐겨찾기 백엔드
+### 2. 길찾기 즐겨찾기 백엔드
 
 사용자가 자주 이용하는 목적지를 저장하고 다시 길찾기에 활용할 수 있도록 Flask 기반 REST API를 구현했습니다.
 
@@ -47,8 +47,8 @@ React Native(Expo) 환경에서 현재 위치 확인부터 목적지 검색, 보
 
 * Flask 기반 즐겨찾기 CRUD REST API
 * MySQL 연동
-* `device\_id` 기준 기기별 즐겨찾기 데이터 관리
-* `favorite\_id + device\_id` 조건을 이용한 수정·삭제
+* `device_id` 기준 기기별 즐겨찾기 데이터 관리
+* `favorite_id + device_id` 조건을 이용한 수정·삭제
 * `ON DUPLICATE KEY UPDATE` 기반 중복 데이터 처리
 * SQL Parameter Binding 적용
 * 데이터 변경 후 `commit()` 및 DB Connection 정리
@@ -73,11 +73,11 @@ React Native(Expo) 환경에서 현재 위치 확인부터 목적지 검색, 보
 TMAP 경로 탐색
 ```
 
-\---
+---
 
 ## Tech Stack
 
-## Frontend
+### Frontend
 
 * React Native
 * Expo
@@ -90,7 +90,7 @@ TMAP 경로 탐색
 * Socket.IO Client
 * TMAP API
 
-## Backend
+### Backend
 
 * Python
 * Flask
@@ -99,32 +99,32 @@ TMAP 경로 탐색
 * boto3
 * AWS SSM Parameter Store
 
-## 🗄️ Database Structure
+### 🗄️ Database Structure
 
 <p align="center">
   <img src="./docs/images/favorites-erd.png" width="650">
 </p>
 
-즐겨찾기 기능은 `device\_id`를 기준으로 기기별 데이터를 관리합니다.
+즐겨찾기 기능은 `device_id`를 기준으로 기기별 데이터를 관리합니다.
 
-* `users.device\_id`: 기기 식별자
-* `favorites.favorite\_id`: 즐겨찾기 식별자
-* `favorites.device\_id`: 기기별 즐겨찾기 구분
+* `users.device_id`: 기기 식별자
+* `favorites.favorite_id`: 즐겨찾기 식별자
+* `favorites.device_id`: 기기별 즐겨찾기 구분
 * `favorites.name`: 즐겨찾기 이름
 * `favorites.address`: 저장 주소
 
-즐겨찾기 수정 및 삭제 시 `favorite\_id + device\_id` 조건을 함께 사용해 특정 기기의 데이터를 대상으로 처리합니다.
+즐겨찾기 수정 및 삭제 시 `favorite_id + device_id` 조건을 함께 사용해 특정 기기의 데이터를 대상으로 처리합니다.
 
-## Deployment
+### Deployment
 
 * AWS EC2
 * GitHub Actions
 * SSH
 * GitHub Secrets
 
-\---
+---
 
-# Project Structure
+## Project Structure
 
 ```text
 visionofvision-navigation/
@@ -157,17 +157,17 @@ visionofvision-navigation/
 │   └── workflows/
 │       └── deploy.yml
 ├── docs/
-│  └─ images/
-│     ├─ navigation-search.png
-│     ├─ navigation-guidance.png
-│     ├─ navigation-route-map.png
-│     └─ favorites-erd.png
+│   └── images/
+│       ├── navigation-search.png
+│       ├── navigation-guidance.png
+│       ├── navigation-route-map.png
+│       └── favorites-erd.png
 ├── .gitignore
 ├── requirements.txt
 └── README.md
 ```
 
-\---
+---
 
 ## Navigation Flow
 
@@ -194,11 +194,11 @@ NavigationScreen
         └─ YOLO 위험 감지 결과 연계
 ```
 
-\---
+---
 
-### Key Implementation
+## Key Implementation
 
-## 현재 위치 및 목적지 처리
+### 현재 위치 및 목적지 처리
 
 `NavigationScreen`에서는 Expo Location을 이용해 현재 GPS 좌표를 가져옵니다.
 
@@ -212,9 +212,9 @@ destination
 destinationCoords
 ```
 
-\---
+---
 
-## STT 기반 목적지 입력
+### STT 기반 목적지 입력
 
 시각장애인 사용자가 키보드 입력 없이 목적지를 지정할 수 있도록 STT 입력을 지원합니다.
 
@@ -245,9 +245,9 @@ TMAP Geocoding
 
 또한 객체 인식, OCR, 설정, 취소와 같은 음성 명령은 목적지 검색보다 먼저 판단하여 앱 내 화면 이동 명령으로 처리합니다.
 
-\---
+---
 
-# TTS-STT Echo Prevention
+### TTS-STT Echo Prevention
 
 STT 시작 전에 앱이 안내 TTS를 출력하면, 해당 음성이 다시 마이크를 통해 STT 입력으로 인식되는 문제가 발생할 수 있었습니다.
 
@@ -272,9 +272,9 @@ STT 활성화
 
 > 1.2초 등의 값은 성능 지표가 아니라 실제 구현에 사용한 제어 기준입니다.
 
-\---
+---
 
-# Pedestrian Route Guidance
+### Pedestrian Route Guidance
 
 TMAP 보행자 경로 API 응답에서 전체 데이터를 그대로 사용하는 대신, 실제 길안내에 필요한 Point만 추출했습니다.
 
@@ -298,9 +298,9 @@ longitude
 
 이를 현재 위치와 비교하여 턴바이턴 안내를 제공합니다.
 
-\---
+---
 
-# Distance Calculation
+### Distance Calculation
 
 현재 위치와 안내 지점 및 목적지 간 거리는 Haversine Formula를 이용해 직접 계산했습니다.
 
@@ -311,9 +311,9 @@ longitude
 * 안내 지점 접근 여부
 * 경로 이탈 여부
 
-\---
+---
 
-# Route Deviation \& Recalculation
+### Route Deviation & Recalculation
 
 사용자가 기존 경로에서 이탈한 상황에서도 이전 안내가 계속되는 문제를 해결하기 위해 안내 지점까지의 거리 변화를 추적했습니다.
 
@@ -337,9 +337,9 @@ TMAP 경로 재요청
 
 재탐색 완료 후 기존 안내 이력을 초기화하고 새로운 경로 기준으로 안내를 계속합니다.
 
-\---
+---
 
-# Heading / Bearing Guidance
+### Heading / Bearing Guidance
 
 Expo Location의 Heading 정보와 현재 위치에서 목적지까지의 Bearing을 계산하여 사용자가 진행해야 할 상대 방향을 구합니다.
 
@@ -364,11 +364,11 @@ Device Heading
 
 시각적 지도 확인이 어려운 사용자를 고려하여 결과를 TTS로 전달합니다.
 
-\---
+---
 
-# YOLO Result Integration
+### YOLO Result Integration
 
-길찾기 화면에서 Expo Camera로 카메라 프레임을 획득하고Socket.IO 기반 실시간 통신을 통해 AI 서버에 전달합니다.
+길찾기 화면에서 Expo Camera로 카메라 프레임을 획득하고 Socket.IO 기반 실시간 통신을 통해 AI 서버에 전달합니다.
 
 서버에서 전달받은 Detection 결과를 이용하여:
 
@@ -381,31 +381,31 @@ Device Heading
 
 본 저장소에서는 YOLO 모델 자체 개발보다 **AI Detection 결과를 실제 길찾기 사용자 인터페이스에 연계한 부분**을 중심으로 다룹니다.
 
-\---
+---
 
-# Favorites REST API
+### Favorites REST API
 
 즐겨찾기 기능은 다음 API로 구성했습니다.
 
 |Method|Endpoint|Description|
 |-|-|-|
-|GET|`/setting/favorites`|device\_id별 즐겨찾기 조회|
+|GET|`/setting/favorites`|device_id별 즐겨찾기 조회|
 |POST|`/setting/favorites`|즐겨찾기 등록|
 |PUT|`/setting/favorites/<id>`|즐겨찾기 수정|
 |DELETE|`/setting/favorites/<id>`|즐겨찾기 삭제|
 
-수정 및 삭제 시 `favorite\_id`뿐 아니라 `device\_id`도 함께 조건으로 사용합니다.
+수정 및 삭제 시 `favorite_id`뿐 아니라 `device_id`도 함께 조건으로 사용합니다.
 
 ```sql
-WHERE favorite\_id = %s
-AND device\_id = %s
+WHERE favorite_id = %s
+AND device_id = %s
 ```
 
 SQL Query에는 Parameter Binding을 적용했습니다.
 
-\---
+---
 
-# AWS SSM Parameter Store
+### AWS SSM Parameter Store
 
 MySQL 접속정보를 Python 소스코드에 직접 작성하지 않고 AWS Systems Manager Parameter Store에서 실행 시 조회하도록 구성했습니다.
 
@@ -430,14 +430,14 @@ Environment Variable
 mysql.connector
 ```
 
-\---
+---
 
-# Deployment
+## Deployment
 
 백엔드 소스는 AWS EC2에 배포했습니다.
 
 실제 프로젝트에서는 main 브랜치 Push를 트리거로 AWS EC2에 최신 코드를 자동 반영하도록 GitHub Actions workflow를 구성했습니다.
-포트폴리오용 저장소에서는 실제 서버 배포를 방지하기 위해 수동 실행(workflow\_dispatch) 방식으로 변경했습니다.
+포트폴리오용 저장소에서는 실제 서버 배포를 방지하기 위해 수동 실행(workflow_dispatch) 방식으로 변경했습니다.
 
 ```text
 Push to main
@@ -450,18 +450,18 @@ AWS EC2
     ↓
 git fetch
     ↓
-git reset --hard FETCH\_HEAD
+git reset --hard FETCH_HEAD
 ```
 
 SSH Key, EC2 Host/User, GitHub PAT와 같은 값은 GitHub Secrets로 관리합니다.
 
 본 프로젝트에서는 테스트·빌드 단계까지 포함한 전체 CI 파이프라인보다 **GitHub Actions 기반 EC2 자동 배포**를 구현한 경험에 초점을 둡니다.
 
-\---
+---
 
-# Troubleshooting
+## Troubleshooting
 
-## 1\. TTS 음성이 STT에 다시 입력되는 문제
+### 1. TTS 음성이 STT에 다시 입력되는 문제
 
 **Problem**
 
@@ -477,9 +477,9 @@ SSH Key, EC2 Host/User, GitHub PAT와 같은 값은 GitHub Secrets로 관리합�
 
 앱 자체 안내 음성이 목적지 검색 입력으로 다시 처리되는 흐름을 차단했습니다.
 
-\---
+---
 
-## 2\. STT 장소명 오인식
+### 2. STT 장소명 오인식
 
 **Problem**
 
@@ -495,9 +495,9 @@ SSH Key, EC2 Host/User, GitHub PAT와 같은 값은 GitHub Secrets로 관리합�
 
 오인식된 문자열을 TMAP 검색에 활용 가능한 목적지명으로 정규화했습니다.
 
-\---
+---
 
-## 3\. 경로 이탈 후 기존 안내가 지속되는 문제
+### 3. 경로 이탈 후 기존 안내가 지속되는 문제
 
 **Problem**
 
@@ -511,9 +511,9 @@ SSH Key, EC2 Host/User, GitHub PAT와 같은 값은 GitHub Secrets로 관리합�
 
 사용자의 실제 이동 위치를 기준으로 새로운 경로를 생성하고 안내를 재개하도록 구현했습니다.
 
-\---
+---
 
-## 4\. 화면 전환 이후 실시간 기능이 남는 문제
+### 4. 화면 전환 이후 실시간 기능이 남는 문제
 
 **Problem**
 
@@ -527,9 +527,9 @@ SSH Key, EC2 Host/User, GitHub PAT와 같은 값은 GitHub Secrets로 관리합�
 
 화면 이탈 이후 불필요한 실시간 기능 실행과 중복 동작을 방지했습니다.
 
-\---
+---
 
-# Security
+## Security
 
 GitHub 공개 저장소에는 실제 인증정보를 포함하지 않습니다.
 
@@ -550,9 +550,9 @@ GitHub PAT
 
 `.env`, `.pem`, `.key` 파일은 Git에 포함하지 않습니다.
 
-\---
+---
 
-# Notes
+## Notes
 
 본 저장소는 VisionOfVision 전체 프로젝트를 공개하기 위한 저장소가 아닙니다.
 
@@ -561,4 +561,3 @@ GitHub PAT
 프로젝트 전체에는 OCR, 객체 인식, 음성 인터페이스 등 다른 기능도 포함되어 있으나, 본 저장소에서는 직접 구현·연계한 길찾기 영역을 중심으로 설명합니다.
 
 또한 코드에 존재하는 거리, 시간, 각도 등의 임계값은 성과 지표가 아닌 기능 구현을 위한 설계 기준입니다.
-
