@@ -1,147 +1,161 @@
-from flask import Flask, jsonify, request
-import mysql.connector
-import boto3
+"""Favorites API; device_id scopes data but is not an authentication credential."""
+from contextlib import contextmanager
 import os
 
+import boto3
+from flask import Flask, jsonify, request
+import mysql.connector
+from werkzeug.exceptions import BadRequest, NotFound
+
+
 def load_ssm_to_env(param_map, region="ap-northeast-2"):
-    ssm = boto3.client('ssm', region_name=region)
+    ssm = boto3.client("ssm", region_name=region)
     for env_name, ssm_name in param_map.items():
         response = ssm.get_parameter(Name=ssm_name, WithDecryption=True)
-        os.environ[env_name] = response['Parameter']['Value']
+        os.environ[env_name] = response["Parameter"]["Value"]
 
-# 불러올 SSM 파라미터 이름 매핑
+
 PARAMS = {
-"authHost": "/db/host",
-"authUser": "/db/user",
-"authPassword": "/db/password",
-"authDatabase": "/db/database"
+    "authHost": "/db/host",
+    "authUser": "/db/user",
+    "authPassword": "/db/password",
+    "authDatabase": "/db/database",
 }
-
-# 실행 시 SSM에서 읽어 환경변수로 설정
 load_ssm_to_env(PARAMS)
 
-# 환경 변수 로드
 authHost = os.getenv("authHost")
 authUser = os.getenv("authUser")
 authPassword = os.getenv("authPassword")
 authDatabase = os.getenv("authDatabase")
-
 app = Flask(__name__)
 
-def connection(): # SQL 연결을 위한 코드
+
+def connection():
     return mysql.connector.connect(
-    host=authHost,
-    user=authUser,
-    password=authPassword,
-    database=authDatabase
+        host=authHost, user=authUser, password=authPassword, database=authDatabase
     )
 
-def close(cursor, db_connection): # 사용 끝나면 DB 종료
-    cursor.close()
-    db_connection.close()
 
-@app.route('/setting/favorites', methods=['GET'])
+def close(cursor, db_connection):
+    # A failed cursor close must not prevent closing the connection.
+    for resource in (cursor, db_connection):
+        if resource is not None:
+            try:
+                resource.close()
+            except mysql.connector.Error:
+                app.logger.exception("DB resource cleanup failed")
+
+
+@contextmanager
+def database_cursor(write=False):
+    db_connection = None
+    cursor = None
+    try:
+        db_connection = connection()
+        cursor = db_connection.cursor(dictionary=True)
+        yield cursor
+        if write:
+            db_connection.commit()
+    except Exception:
+        if write and db_connection is not None:
+            try:
+                db_connection.rollback()
+            except mysql.connector.Error:
+                app.logger.exception("DB rollback failed")
+        raise
+    finally:
+        close(cursor, db_connection)
+
+
+def required_text(value, field):
+    if not isinstance(value, str) or not value.strip():
+        raise BadRequest(f"{field} must be a non-empty string")
+    return value
+
+
+def favorite_body(device_field):
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        raise BadRequest("A JSON object is required")
+    return (
+        required_text(data.get(device_field), device_field),
+        required_text(data.get("name"), "name"),
+        required_text(data.get("address"), "address"),
+    )
+
+
+def list_favorites(cursor, device_id):
+    cursor.execute("SELECT * FROM favorites WHERE device_id = %s", (device_id,))
+    return cursor.fetchall()
+
+
+@app.errorhandler(BadRequest)
+@app.errorhandler(NotFound)
+def handle_request_error(error):
+    return jsonify(error=error.description), error.code
+
+
+@app.errorhandler(mysql.connector.Error)
+def handle_database_error(error):
+    app.logger.exception("Favorites database operation failed")
+    return jsonify(error="Database operation failed"), 500
+
+
+@app.route("/setting/favorites", methods=["GET"])
 def getFavoritesList():
-    # deviceId를 얻기위한 설정
-    device_id = request.args.get('device_id')
-    
-    # db와 연동하기
-    db_connection = connection()
-    cursor = db_connection.cursor(dictionary=True)
-    
-    # GET
-    query = 'SELECT * FROM favorites WHERE device_id = %s'
-    cursor.execute(query, (device_id, ))
-    
-    # return
-    data = cursor.fetchall()
-    # close
-    close(cursor, db_connection)
+    device_id = required_text(request.args.get("device_id"), "device_id")
+    with database_cursor() as cursor:
+        output = list_favorites(cursor, device_id)
+    return jsonify(output)
 
-    return jsonify(data)
 
-@app.route('/setting/favorites', methods=['POST'])
+@app.route("/setting/favorites", methods=["POST"])
 def createFavorite():
-    # 같은 값이 존재하면 막는 코드 필요
-    # db와 연동하기
-    db_connection = connection()
-    cursor = db_connection.cursor()
-    
-    # 데이터 받아오기
-    data = request.get_json() # request : 클라이언트의 요청 내용이 담김 -> json으로 파싱
-    device_id = data.get('deviceId')
-    name = data.get('name')
-    address = data.get('address')
-    
-    # POST
-    insert_query = """
-        INSERT INTO favorites(address, name, device_id)
-        VALUES (%s, %s, %s)
-        ON DUPLICATE KEY UPDATE address = VALUES(address), name = VALUES(name)
-        """
-    cursor.execute(insert_query,(address, name, device_id))
-    db_connection.commit() # 이걸 해야 적용됨.
-    
-    # return
-    cursor = db_connection.cursor(dictionary=True)
-    output_query = 'SELECT * FROM favorites'
-    cursor.execute(output_query)
-    output = cursor.fetchall()
-    # close
-    close(cursor, db_connection)
-
+    # Preserve the original POST deviceId field.
+    device_id, name, address = favorite_body("deviceId")
+    with database_cursor(write=True) as cursor:
+        cursor.execute(
+            """INSERT INTO favorites(address, name, device_id)
+               VALUES (%s, %s, %s)
+               ON DUPLICATE KEY UPDATE address = VALUES(address), name = VALUES(name)""",
+            (address, name, device_id),
+        )
+        output = list_favorites(cursor, device_id)
     return jsonify(output)
 
-@app.route('/setting/favorites/<int:id>', methods = ['PUT'])
+
+@app.route("/setting/favorites/<int:id>", methods=["PUT"])
 def changeFavorite(id):
-    # 데이터 받기
-    data = request.get_json()
-    device_id = data.get('device_id')
-    name = data.get('name')
-    address = data.get('address')
-    
-    # DB 연결하기
-    db_connection = connection()
-    cursor = db_connection.cursor()
-
-    # PUT
-    put_query = 'UPDATE favorites SET address=%s, name=%s WHERE favorite_id=%s AND device_id = %s'
-    data = (address, name, str(id), device_id)
-    cursor.execute(put_query, data)
-    db_connection.commit() 
-    
-    # return
-    cursor = db_connection.cursor(dictionary=True)
-    output_query = 'SELECT * FROM favorites'
-    cursor.execute(output_query)
-    output = cursor.fetchall()
-    
-    # close
-    close(cursor, db_connection)
+    device_id, name, address = favorite_body("device_id")
+    with database_cursor(write=True) as cursor:
+        # Check existence separately: an unchanged UPDATE can report rowcount=0.
+        cursor.execute(
+            "SELECT favorite_id FROM favorites WHERE favorite_id = %s AND device_id = %s FOR UPDATE",
+            (id, device_id),
+        )
+        if cursor.fetchone() is None:
+            raise NotFound("Favorite not found")
+        cursor.execute(
+            "UPDATE favorites SET address = %s, name = %s WHERE favorite_id = %s AND device_id = %s",
+            (address, name, id, device_id),
+        )
+        output = list_favorites(cursor, device_id)
     return jsonify(output)
 
-@app.route('/setting/favorites/<int:id>', methods=['DELETE'])
+
+@app.route("/setting/favorites/<int:id>", methods=["DELETE"])
 def deleteFavorite(id):
-    # deviceId 정보 얻기
-    device_id = request.headers.get('Device-ID')
+    device_id = required_text(request.headers.get("Device-ID"), "Device-ID")
+    with database_cursor(write=True) as cursor:
+        cursor.execute(
+            "DELETE FROM favorites WHERE favorite_id = %s AND device_id = %s",
+            (id, device_id),
+        )
+        if cursor.rowcount == 0:
+            raise NotFound("Favorite not found")
+    # Preserve the original successful DELETE response rather than change its contract.
+    return jsonify([])
 
-    # DB 연결
-    db_connection = connection()
-    cursor = db_connection.cursor()
-    
-    # DELETE
-    deleteQuery = 'DELETE FROM favorites WHERE favorite_id = %s AND device_id=%s'
-    cursor.execute(deleteQuery,(id, device_id))
-    db_connection.commit()
 
-    # return
-    query = 'SELECT * FROM favorites WHERE favorite_id = %s AND device_id=%s'
-    cursor.execute(query, (id, device_id))
-    result = cursor.fetchall()
-    
-    #close
-    close(cursor, db_connection)
-    return jsonify(result)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(host="0.0.0.0", port=5010, debug=False, use_reloader=False)
