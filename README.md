@@ -4,6 +4,25 @@
 
 본 저장소는 전체 프로젝트 코드가 아니라, 프로젝트에서 직접 담당한 **React Native 기반 길찾기 프론트엔드와 Flask·MySQL 기반 길찾기 즐겨찾기 백엔드**를 중심으로 정리한 포트폴리오용 저장소입니다.
 
+## 공개 범위
+
+이 저장소는 팀 프로젝트에서 직접 담당한 길찾기 기능과 즐겨찾기 백엔드의 **개인 기여 코드 발췌 저장소**입니다. 전체 앱을 독립 실행하기 위한 구성은 포함하지 않습니다.
+
+화면 코드가 참조하는 일부 UI·카메라 모듈, 앱 진입점, 경로 별칭 설정과 음성 자산은 제외되어 있습니다. `package.json`은 사용한 패키지를 확인하기 위한 자료이며, 의존성 설치만으로 전체 앱이 실행되지는 않습니다.
+
+아래 핵심 파일과 서비스 화면을 통해 개인 구현 범위와 기능 흐름을 확인할 수 있습니다.
+
+## 핵심 코드
+
+| 구현 내용 | 파일 |
+|---|---|
+| 안내 지점 추출·중복 안내 방지·거리 변화 기반 재탐색·상대각 계산 | [useNavigationGuide.js](frontend/hooks/navigation/useNavigationGuide.js) |
+| 보행자 경로 요청·예상 시간 및 거리·로딩과 오류 처리 | [useRouteCalculation.js](frontend/hooks/navigation/useRouteCalculation.js) |
+| TTS 출력·중지 및 한국어 STT 처리 | [speechHelper.js](frontend/utils/speechHelper.js) |
+| Haversine 거리·방위각 계산 | [navigationUtils.js](frontend/utils/navigation/navigationUtils.js) |
+| TMAP 보행자 경로 요청·목적지 검색·주소 변환 | [tmap.js](frontend/utils/navigation/tmap.js) |
+| 즐겨찾기 CRUD·SQL Parameter Binding·SSM 연동 | [favorites.py](backend/favorites/favorites.py) |
+
 ## 📱 Screenshots
 
 <p align="center">
@@ -137,11 +156,17 @@ visionofvision-navigation/
 │   │       ├── GuideScreen.js
 │   │       └── YoloDanger.js
 │   │
+│   ├── hooks/
+│   │   └── navigation/
+│   │       ├── useNavigationGuide.js
+│   │       └── useRouteCalculation.js
+│   │
 │   ├── services/
 │   │   └── stt/
 │   │       └── useAutoSTT.js
 │   │
 │   ├── utils/
+│   │   ├── speechHelper.js
 │   │   └── navigation/
 │   │       ├── location.js
 │   │       ├── navigationUtils.js
@@ -521,11 +546,11 @@ SSH Key, EC2 Host/User, GitHub PAT와 같은 값은 GitHub Secrets로 관리합�
 
 **Solution**
 
-`useIsFocused`, `useFocusEffect`, Effect Cleanup을 이용해 화면 Life Cycle에 맞춰 관련 자원을 정리했습니다.
+목적지 입력 및 위험 감지 화면에는 `useIsFocused`, `useFocusEffect`, Effect Cleanup을 활용한 정리 로직을 적용했습니다. `useNavigationGuide`에서는 언마운트 또는 Effect 재실행 시 위치 확인 타이머를 해제하고, 언마운트 시 Heading 구독을 제거합니다.
 
 **Result**
 
-화면 이탈 이후 불필요한 실시간 기능 실행과 중복 동작을 방지했습니다.
+화면별 정리 로직을 통해 불필요한 실시간 기능 실행과 중복 동작을 방지하도록 구성했습니다. 다만 `useNavigationGuide`의 화면 포커스 이탈 처리와 진행 중인 비동기 작업의 종료 처리는 추가 보완이 필요합니다.
 
 ---
 
