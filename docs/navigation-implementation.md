@@ -2,7 +2,7 @@
 
 [프로젝트 개요와 핵심 기여](../README.md)
 
-개인 기여 코드의 구현 흐름과 프로젝트 당시 배포 방식을 설명합니다. 전체 앱을 독립 실행하는 구성은 아니며, 후속 API 개선은 [별도 문서](favorites-api-improvements.md)에서 구분합니다.
+길찾기 개인 기여 코드의 구현 흐름, 본인이 설계한 즐겨찾기 ERD 및 팀의 백엔드·배포 구조를 설명합니다. 즐겨찾기 관련 프로젝트 당시 본인 기여는 ERD 설계까지이며, Flask API·MySQL 연동·SSM 설정·EC2 자동 배포 구현은 팀원 기여입니다. 전체 앱을 독립 실행하는 구성은 아니며, 후속 API 개선은 [별도 문서](favorites-api-improvements.md)에서 구분합니다.
 
 ## Tech Stack
 
@@ -19,7 +19,7 @@
 * Socket.IO Client
 * TMAP API
 
-### Backend
+### Backend (팀 구현)
 
 * Python
 * Flask
@@ -34,6 +34,8 @@
   <img src="./images/favorites-erd.png" width="650">
 </p>
 
+즐겨찾기 기능의 ERD를 설계했습니다. 아래 데이터 구조는 해당 ERD와 팀 구현을 설명하며, 실제 테이블 생성이나 DB 제약조건 적용을 본인 기여로 주장하지 않습니다.
+
 즐겨찾기 기능은 `device_id`를 기준으로 기기별 데이터를 관리합니다.
 
 * `users.device_id`: 기기 식별자
@@ -44,7 +46,7 @@
 
 즐겨찾기 수정 및 삭제 시 `favorite_id + device_id` 조건을 함께 사용해 특정 기기의 데이터를 대상으로 처리합니다.
 
-### Deployment
+### Deployment (팀 구현)
 
 * AWS EC2
 * GitHub Actions
@@ -318,9 +320,9 @@ Device Heading
 
 ---
 
-### Favorites REST API
+### Favorites REST API (팀 구현)
 
-즐겨찾기 기능은 다음 API로 구성했습니다.
+다음은 팀원이 구현한 즐겨찾기 API 구조입니다. 본인 기여는 즐겨찾기 ERD 설계이며, API 코드는 구조 설명을 위해 포함합니다.
 
 |Method|Endpoint|Description|
 |-|-|-|
@@ -336,13 +338,13 @@ WHERE favorite_id = %s
 AND device_id = %s
 ```
 
-SQL Query에는 Parameter Binding을 적용했습니다.
+팀 구현의 SQL Query에는 Parameter Binding이 적용되어 있습니다.
 
 ---
 
-### AWS SSM Parameter Store
+### AWS SSM Parameter Store (팀 구현)
 
-MySQL 접속정보를 Python 소스코드에 직접 작성하지 않고 AWS Systems Manager Parameter Store에서 실행 시 조회하도록 구성했습니다.
+팀 구현에서는 MySQL 접속정보를 Python 소스코드에 직접 작성하지 않고 AWS Systems Manager Parameter Store에서 실행 시 조회합니다.
 
 관리 대상:
 
@@ -367,11 +369,11 @@ mysql.connector
 
 ---
 
-## Deployment
+## Deployment (팀 구현)
 
-백엔드 소스는 AWS EC2에 배포했습니다.
+팀의 백엔드는 AWS EC2에 배포된 구조입니다.
 
-실제 프로젝트에서는 main 브랜치 Push를 트리거로 AWS EC2에 최신 코드를 자동 반영하도록 GitHub Actions workflow를 구성했습니다.
+실제 프로젝트의 팀 구현에서는 main 브랜치 Push를 트리거로 AWS EC2에 최신 코드를 자동 반영하는 GitHub Actions workflow를 사용했습니다.
 포트폴리오용 저장소에서는 실제 서버 배포를 방지하기 위해 수동 실행(workflow_dispatch) 방식으로 변경했습니다.
 
 ```text
@@ -390,7 +392,7 @@ git reset --hard FETCH_HEAD
 
 SSH Key, EC2 Host/User, GitHub PAT와 같은 값은 GitHub Secrets로 관리합니다.
 
-본 프로젝트에서는 테스트·빌드 단계까지 포함한 전체 CI 파이프라인보다 **GitHub Actions 기반 EC2 자동 배포**를 구현한 경험에 초점을 둡니다.
+이 배포 설명은 팀 프로젝트 구조를 소개하기 위한 것이며, 본인의 배포 구현 경험으로 제시하지 않습니다.
 
 ---
 
