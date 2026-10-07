@@ -1,13 +1,13 @@
 # VisionOfVision Navigation
 
-시각장애인의 보행을 지원하는 AI 비서 앱에서 **길찾기 프론트엔드와 즐겨찾기 백엔드**를 담당했습니다. 목적지 입력부터 보행자 경로 안내, 저장한 주소의 재사용까지 연결했습니다.
+시각장애인의 보행을 지원하는 AI 비서 앱에서 **길찾기 프론트엔드 개발과 즐겨찾기 ERD 설계**를 담당했습니다.
 
 | 항목 | 내용 |
 |---|---|
 | 기간 | 2025.04 ~ 2025.10 |
-| 담당 | 제품 기획, React Native 길찾기, Flask·MySQL 즐겨찾기 API, YOLO 위험 감지 결과 연계 |
+| 담당 | 제품 기획, React Native 길찾기, 즐겨찾기 ERD 설계, YOLO 위험 감지 결과 연계 |
 | 팀 프로젝트 성과 | 한이음 드림업 중간 우수 프로젝트 선정 |
-| 공개 범위 | 개인 기여 코드 발췌. 일부 공통 모듈·앱 진입점·음성 자산이 제외되어 전체 앱을 독립 실행하는 구성은 아닙니다. |
+| 공개 범위 | 길찾기 개인 기여 코드와 즐겨찾기 ERD, 구조 설명을 위한 팀 구현 코드·배포 설정을 포함합니다. 일부 공통 모듈·앱 진입점·음성 자산이 제외되어 전체 앱을 독립 실행하는 구성은 아닙니다. |
 
 ## 서비스 화면
 
@@ -21,7 +21,9 @@
 
 - **보행자 길찾기:** GPS 위치와 TMAP API를 연계하고, 안내 지점 접근 시 TTS 안내와 중복 안내 방지, 거리 변화 기반 경로 재탐색을 구현했습니다.
 - **음성 인터페이스:** STT 장소명 오인식을 정규화하고, TTS 출력이 STT 입력으로 재인식되는 흐름을 억제했습니다. YOLO 위험 감지 결과는 음성·진동 안내와 연계했습니다.
-- **즐겨찾기 API와 배포:** Flask CRUD API에 MySQL Parameter Binding을 적용하고, SSM으로 DB 접속정보를 분리했습니다. GitHub Actions 기반 EC2 자동 배포를 구성했습니다.
+- **즐겨찾기 ERD 설계:** 즐겨찾기 기능의 ERD를 설계했습니다.
+
+즐겨찾기 관련 프로젝트 당시 본인 기여는 ERD 설계까지입니다. Flask CRUD API, MySQL Parameter Binding, SSM 접속정보 분리 및 GitHub Actions 기반 EC2 배포는 팀원 구현이며 본인 기여에 포함하지 않습니다.
 
 YOLO 모델 자체 개발과 위험 감지 결과의 서비스 연계는 구분하며, 이 저장소는 후자를 중심으로 설명합니다.
 
@@ -44,9 +46,12 @@ YOLO 모델 자체 개발과 위험 감지 결과의 서비스 연계는 구분�
 | 목적지 음성 입력과 화면 흐름 | [NavigationScreen.js](frontend/screens/navigation/NavigationScreen.js) |
 | TTS·STT 공통 처리 | [speechHelper.js](frontend/utils/speechHelper.js) |
 | 거리·방위각 계산 / TMAP 요청 | [navigationUtils.js](frontend/utils/navigation/navigationUtils.js) / [tmap.js](frontend/utils/navigation/tmap.js) |
-| 즐겨찾기 CRUD·SSM 연동 | [favorites.py](backend/favorites/favorites.py) |
+| 즐겨찾기 ERD 설계 | [favorites-erd.png](docs/images/favorites-erd.png) |
+| 팀 구현 참고: 즐겨찾기 CRUD·SSM 연동 | [favorites.py](backend/favorites/favorites.py) |
 
-## 사용 기술
+## 프로젝트 사용 기술
+
+앱 기술은 길찾기 구현과 관련되며, 아래 백엔드·배포 기술은 팀 프로젝트 구성 설명입니다. 해당 기술의 구현을 본인 기여로 주장하지 않습니다.
 
 - **앱:** React Native · Expo · React Navigation · STT/TTS · TMAP API · Socket.IO
 - **백엔드:** Python · Flask · MySQL · mysql.connector
@@ -58,6 +63,6 @@ YOLO 모델 자체 개발과 위험 감지 결과의 서비스 연계는 구분�
 - [즐겨찾기 API 후속 개선과 요청·응답 형식](docs/favorites-api-improvements.md)
 - [AWS·DB 모의 객체 기반 API 테스트](tests/test_favorites.py)
 
-즐겨찾기 API의 기기별 응답 범위·입력 검증·DB 예외 처리는 **2026-10-04 포트폴리오 정리 과정의 후속 개선**이며 프로젝트 당시 구현과 구분합니다. 모의 환경 테스트 14개가 통과했으며, 실제 MySQL·모바일·EC2 통합 검증은 수행하지 않았습니다.
+즐겨찾기 API의 기기별 응답 범위·입력 검증·DB 예외 처리는 **2026-10-04 포트폴리오 정리 과정의 후속 개선**이며 프로젝트 당시 구현과 구분합니다. 이 후속 개선과 테스트 기록은 본인의 프로젝트 당시 API 구현 기여를 의미하지 않습니다. 모의 환경 테스트 14개가 통과했으며, 실제 MySQL·모바일·EC2 통합 검증은 수행하지 않았습니다.
 
 `device_id`는 데이터 구분값이며 인증 수단이 아닙니다. `useNavigationGuide`에는 타이머·Heading 구독 정리 코드가 있으나, 화면 포커스 이탈과 진행 중인 비동기 작업 처리는 추가 보완이 필요합니다.
