@@ -1,6 +1,6 @@
 # VisionOfVision Navigation
 
-시각장애인의 보행을 지원하는 AI 비서 앱에서 **길찾기 프론트엔드와 즐겨찾기 백엔드**를 담당했습니다. 목적지 입력부터 보행자 경로 안내, 저장한 주소의 재사용까지 연결했습니다.
+시각장애인의 보행을 지원하는 AI 비서 앱에서 **길찾기 프론트엔드와 즐겨찾기 백엔드**를 담당했습니다. 목적지 입력부터 보행자 경로 안내, 도착 후 즐겨찾기 조회와 등록 화면으로의 정보 전달까지 구현했습니다.
 
 | 항목 | 내용 |
 |---|---|
@@ -21,7 +21,8 @@
 
 - **보행자 길찾기:** GPS 위치와 TMAP API를 연계하고, 안내 지점 접근 시 TTS 안내와 중복 안내 방지, 거리 변화 기반 경로 재탐색을 구현했습니다.
 - **음성 인터페이스:** STT 장소명 오인식을 정규화하고, TTS 출력이 STT 입력으로 재인식되는 흐름을 억제했습니다. YOLO 위험 감지 결과는 음성·진동 안내와 연계했습니다.
-- **즐겨찾기 API와 배포:** Flask CRUD API에 MySQL Parameter Binding을 적용하고, SSM으로 DB 접속정보를 분리했습니다. GitHub Actions 기반 EC2 자동 배포를 구성했습니다.
+- **즐겨찾기와 DB 설정:** 기기별 목록과 변경 대상을 `device_id`로 구분하고, Flask CRUD API에 MySQL Parameter Binding을 적용했습니다. 도착 후 저장 주소를 확인하고 등록 화면에 목적지 정보를 전달하며, DB 접속정보는 SSM에서 모듈 초기화 시 조회합니다.
+- **EC2 소스 갱신:** GitHub Actions에서 SSH로 접속해 저장소의 `main`을 가져오고 작업 디렉터리를 갱신합니다. 공개 workflow는 수동 실행이며, 애플리케이션 빌드·프로세스 재시작·상태 확인은 포함하지 않습니다.
 
 YOLO 모델 자체 개발과 위험 감지 결과의 서비스 연계는 구분하며, 이 저장소는 후자를 중심으로 설명합니다.
 
@@ -54,6 +55,8 @@ YOLO 모델 자체 개발과 위험 감지 결과의 서비스 연계는 구분�
 | TTS·STT 공통 처리 | [speechHelper.js](frontend/utils/speechHelper.js) |
 | 거리·방위각 계산 / TMAP 요청 | [navigationUtils.js](frontend/utils/navigation/navigationUtils.js) / [tmap.js](frontend/utils/navigation/tmap.js) |
 | 즐겨찾기 CRUD·SSM 연동 | [favorites.py](backend/favorites/favorites.py) |
+| 도착 후 즐겨찾기 조회·주소 비교·등록 화면 전달 | [GuideScreen.js](frontend/screens/navigation/GuideScreen.js) |
+| SSH 기반 EC2 소스 갱신 | [deploy.yml](.github/workflows/deploy.yml) |
 
 ## 사용 기술
 
@@ -70,3 +73,5 @@ YOLO 모델 자체 개발과 위험 감지 결과의 서비스 연계는 구분�
 즐겨찾기 API의 기기별 응답 범위·입력 검증·DB 예외 처리는 **2026-10-04 포트폴리오 정리 과정의 후속 개선**이며 프로젝트 당시 구현과 구분합니다. 모의 환경 테스트 14개가 통과했으며, 실제 MySQL·모바일·EC2 통합 검증은 수행하지 않았습니다.
 
 `device_id`는 데이터 구분값이며 인증 수단이 아닙니다. `useNavigationGuide`에는 타이머·Heading 구독 정리 코드가 있으나, 화면 포커스 이탈과 진행 중인 비동기 작업 처리는 추가 보완이 필요합니다.
+
+즐겨찾기 선택 화면에서 목적지 검색으로 값을 넘기는 연결 코드와 실제 DB의 UNIQUE 제약 정의는 공개 범위에서 확인할 수 없습니다. `ON DUPLICATE KEY UPDATE`의 사용만으로 동일 주소 중복 방지를 단정하지 않습니다. 확인 가능한 흐름과 제약 의존성은 [구현 상세](docs/navigation-implementation.md)에 구분했습니다.

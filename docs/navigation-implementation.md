@@ -15,6 +15,7 @@
 * Expo Location
 * Expo Camera
 * Expo Speech
+* Expo SecureStore
 * React Native Vibration
 * Socket.IO Client
 * TMAP API
@@ -34,7 +35,7 @@
   <img src="./images/favorites-erd.png" width="650">
 </p>
 
-즐겨찾기 기능은 `device_id`를 기준으로 기기별 데이터를 관리합니다.
+즐겨찾기는 기기별 목록과 변경 대상을 구분하기 위해 `device_id`를 데이터 처리 기준으로 사용합니다. 이 값은 클라이언트가 전달하는 구분값이며 인증 수단이 아닙니다.
 
 * `users.device_id`: 기기 식별자
 * `favorites.favorite_id`: 즐겨찾기 식별자
@@ -43,6 +44,8 @@
 * `favorites.address`: 저장 주소
 
 즐겨찾기 수정 및 삭제 시 `favorite_id + device_id` 조건을 함께 사용해 특정 기기의 데이터를 대상으로 처리합니다.
+
+공개 ERD에는 `users.device_id`와 `favorites.favorite_id`의 PK 표시가 있습니다. 실제 DDL·UNIQUE 제약 정의는 포함되어 있지 않아 `device_id + address` 등의 중복 제약을 확인할 수 없습니다. 기기 ID 선택의 설명은 기기별 데이터 구분이라는 기능적 목적에 한정하며, 회원가입 생략 같은 당시 기획 이유를 추가로 가정하지 않습니다.
 
 ### Deployment
 
@@ -113,7 +116,7 @@ NavigationScreen
 ├─ TMAP Reverse Geocoding
 ├─ Text / STT 목적지 입력
 ├─ STT 입력 정규화
-└─ TMAP Geocoding
+└─ TMAP POI 검색
         ↓
      Route
         ↓
@@ -137,7 +140,7 @@ NavigationScreen
 
 `NavigationScreen`에서는 Expo Location을 이용해 현재 GPS 좌표를 가져옵니다.
 
-현재 좌표는 TMAP Reverse Geocoding을 통해 주소 형태로 변환하며, 사용자가 입력한 목적지명은 TMAP Geocoding을 통해 위도·경도 좌표로 변환합니다.
+현재 좌표는 TMAP Reverse Geocoding을 통해 주소로 변환합니다. 목적지 문자열은 `geocode()`에서 TMAP POI 검색 API에 전달하고, 첫 검색 결과의 `frontLat·frontLon`을 위도·경도로 사용합니다.
 
 이후 다음 데이터를 길찾기 화면으로 전달합니다.
 
@@ -166,7 +169,7 @@ Dictionary Mapping
     ↓
 정규표현식 기반 오인식 보정
     ↓
-TMAP Geocoding
+TMAP POI 검색
 ```
 
 예를 들어 반복적으로 발생한 장소명 오인식을 다음과 같이 보정했습니다.
@@ -320,77 +323,98 @@ Device Heading
 
 ### Favorites REST API
 
-즐겨찾기 기능은 다음 API로 구성했습니다.
+기기별 즐겨찾기 목록과 변경 대상을 처리할 수 있도록 기기 식별자를 요청에서 받아 SQL 조건에 적용했습니다.
 
-|Method|Endpoint|Description|
-|-|-|-|
-|GET|`/setting/favorites`|device_id별 즐겨찾기 조회|
-|POST|`/setting/favorites`|즐겨찾기 등록|
-|PUT|`/setting/favorites/<id>`|즐겨찾기 수정|
-|DELETE|`/setting/favorites/<id>`|즐겨찾기 삭제|
+| Method | Endpoint | 기기 식별자 | 처리 |
+|---|---|---|---|
+| GET | `/setting/favorites` | Query `device_id` | 해당 기기의 목록 조회 |
+| POST | `/setting/favorites` | JSON `deviceId` | 이름·주소·기기 식별자 저장 |
+| PUT | `/setting/favorites/<id>` | JSON `device_id` | 즐겨찾기 ID와 기기 ID로 수정 대상 선택 |
+| DELETE | `/setting/favorites/<id>` | Header `Device-ID` | 즐겨찾기 ID와 기기 ID로 삭제 대상 선택 |
 
-수정 및 삭제 시 `favorite_id`뿐 아니라 `device_id`도 함께 조건으로 사용합니다.
+수정·삭제에는 다음 조건을 사용하고, 이름·주소·식별자 등의 값은 Parameter Binding으로 전달합니다.
 
 ```sql
 WHERE favorite_id = %s
 AND device_id = %s
 ```
 
-SQL Query에는 Parameter Binding을 적용했습니다.
+프로젝트 당시 코드는 쓰기 작업 후 commit과 정상 경로의 Cursor·Connection 종료를 수행했습니다. POST·PUT 응답의 기기별 조회 범위와 오류 시 rollback·finally 정리는 [2026년 후속 개선](favorites-api-improvements.md)으로 구분합니다.
+
+#### 등록 SQL의 중복 갱신 조건
+
+POST에는 다음 SQL을 사용합니다.
+
+```sql
+INSERT INTO favorites(address, name, device_id)
+VALUES (%s, %s, %s)
+ON DUPLICATE KEY UPDATE
+    address = VALUES(address),
+    name = VALUES(name)
+```
+
+이는 실제 DB에서 PRIMARY KEY 또는 UNIQUE 충돌이 발생하면 이름·주소를 갱신하는 구문입니다. 공개 저장소에는 실제 제약을 정의한 DDL이 없으며, ERD의 PK 표시만으로 중복 판단 컬럼 조합을 확정할 수 없습니다. 동일 주소·동일 이름·특정 기기 조합의 중복 등록을 방지했다고 설명하지 않습니다.
+
+관련 코드: [favorites.py](../backend/favorites/favorites.py)
+
+---
+
+### 도착 후 즐겨찾기 조회와 등록 화면 연계
+
+[GuideScreen.js](../frontend/screens/navigation/GuideScreen.js)에서 확인되는 흐름은 다음과 같습니다.
+
+1. 도착 시 SecureStore에서 `deviceId`를 읽습니다.
+2. 이 값을 URL 인코딩하여 `GET /setting/favorites?device_id=...`로 목록을 요청합니다.
+3. 응답 배열의 `fav.address`와 도착 목적지의 `destination` 값을 문자열로 비교합니다.
+4. 일치하는 항목이 있으면 목적지 입력 화면으로 돌아갑니다.
+5. 일치하는 항목이 없으면 등록 여부를 안내하고, 등록 선택 시 설정의 즐겨찾기 화면으로 이동합니다.
+6. 등록 화면에 `addFromNavigation·destinationAddress·destinationCoords`를 전달합니다.
+
+목록 조회가 실패하면 중복 확인 함수는 `false`를 반환합니다. 이 문자열 비교를 주소 정규화나 DB의 중복 제약 검증으로 설명하지 않습니다.
+
+문자열 목적지는 [NavigationScreen.js](../frontend/screens/navigation/NavigationScreen.js)의 검색 함수에서 TMAP POI 검색으로 좌표화한 뒤 `currentLocation·destination·destinationCoords`와 함께 Route 화면에 전달합니다. [useRouteCalculation.js](../frontend/hooks/navigation/useRouteCalculation.js)는 이 좌표를 보행자 경로 요청에 사용합니다.
+
+다만 저장된 즐겨찾기를 선택하고 목적지 검색으로 값을 전달하는 화면 코드는 공개되어 있지 않습니다. 따라서 즐겨찾기 선택 → 목적지 검색 → 경로 탐색의 전체 연결 과정은 이 저장소만으로 확인하지 못하며, 위 설명은 공개 코드에서 확인되는 각 처리 단계에 한정합니다.
 
 ---
 
 ### AWS SSM Parameter Store
 
-MySQL 접속정보를 Python 소스코드에 직접 작성하지 않고 AWS Systems Manager Parameter Store에서 실행 시 조회하도록 구성했습니다.
+DB 접속정보를 소스와 분리하기 위해 SSM Parameter Store에서 Host·User·Password·Database 설정값을 읽도록 구성했습니다.
 
-관리 대상:
+`favorites.py`의 모듈 초기화 과정에서 다음 순서로 처리합니다.
 
-```text
-DB Host
-DB User
-DB Password
-DB Database
-```
+1. boto3 SSM 클라이언트를 생성합니다.
+2. 파라미터 이름별로 `get_parameter(Name=..., WithDecryption=True)`를 호출합니다.
+3. 반환값을 환경변수에 저장합니다.
+4. `authHost·authUser·authPassword·authDatabase` 변수로 읽고 MySQL 연결 설정에 사용합니다.
 
-`WithDecryption=True`를 사용해 암호화 Parameter를 복호화하고 환경변수에 저장한 뒤 MySQL Connection 생성 시 사용합니다.
+`WithDecryption=True`는 암호화된 파라미터를 조회할 때 복호화하는 옵션입니다. 모든 파라미터의 실제 저장 유형이나 IAM 권한 정책을 이 코드만으로 확정하지 않습니다.
 
-```text
-AWS SSM
-   ↓
-boto3
-   ↓
-Environment Variable
-   ↓
-mysql.connector
-```
+설정값은 모듈 초기화 시 읽으며, 요청마다 SSM을 조회하거나 실행 중 설정 변경을 자동 반영하지 않습니다. 인증정보 자동 교체·자동 재연결을 구현했다고 설명하지 않습니다.
+
+관련 코드: [favorites.py](../backend/favorites/favorites.py)의 `load_ssm_to_env()`, `PARAMS`, `connection()`
 
 ---
 
 ## Deployment
 
-백엔드 소스는 AWS EC2에 배포했습니다.
+백엔드 소스는 AWS EC2에 배포했습니다. 프로젝트 당시에는 main Push를 트리거로 코드를 가져오도록 구성했으며, 현재 공개 저장소의 [deploy.yml](../.github/workflows/deploy.yml)은 `workflow_dispatch` 수동 실행 방식입니다.
 
-실제 프로젝트에서는 main 브랜치 Push를 트리거로 AWS EC2에 최신 코드를 자동 반영하도록 GitHub Actions workflow를 구성했습니다.
-포트폴리오용 저장소에서는 실제 서버 배포를 방지하기 위해 수동 실행(workflow_dispatch) 방식으로 변경했습니다.
+현재 workflow가 수행하는 작업은 다음과 같습니다.
 
-```text
-Push to main
-    ↓
-GitHub Actions
-    ↓
-SSH
-    ↓
-AWS EC2
-    ↓
-git fetch
-    ↓
-git reset --hard FETCH_HEAD
-```
+| 단계 | 실제 동작 |
+|---|---|
+| 접속 준비 | GitHub Secrets의 SSH 키로 임시 `key.pem` 생성·파일 권한 설정 |
+| EC2 접속 | Secrets의 EC2 User·Host를 사용해 SSH 접속 |
+| Git 준비 | Git 설치 여부 확인, 없으면 설치 |
+| 최초 소스 준비 | `server/.git`이 없으면 팀 서버 저장소 clone |
+| 소스 갱신 | 팀 서버 저장소의 main을 `git fetch`로 가져오고 `git reset --hard FETCH_HEAD`로 작업 디렉터리 갱신 |
+| 키 정리 | 작업 결과와 관계없이 임시 SSH 키 파일 삭제 시도 |
 
-SSH Key, EC2 Host/User, GitHub PAT와 같은 값은 GitHub Secrets로 관리합니다.
+SSH 키·EC2 Host/User·GitHub PAT는 GitHub Secrets로 관리합니다. 반복적인 서버 소스 갱신 작업을 GitHub Actions로 구성한 경험이며, **GitHub Actions 기반 EC2 소스 갱신 자동화**로 설명합니다.
 
-본 프로젝트에서는 테스트·빌드 단계까지 포함한 전체 CI 파이프라인보다 **GitHub Actions 기반 EC2 자동 배포**를 구현한 경험에 초점을 둡니다.
+공개 workflow에는 애플리케이션 테스트·빌드·의존성 설치·DB 마이그레이션·서버 프로세스 재시작·상태 확인 단계가 없습니다. 파일 갱신을 실행 중인 서비스의 새 코드 적용이나 무중단 배포 보장으로 설명하지 않습니다.
 
 ---
 
